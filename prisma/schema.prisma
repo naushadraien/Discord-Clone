@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Profile {
+  id       String @id @default(uuid())
+  userId   String @unique // this come from clerk for google auth
+  name     String
+  imageUrl String @db.Text //@db.Text is for long text for url in mysql
+  email    String @db.Text //@db.Text is for long text for url in mysql
+
+  servers  Server[] //this is for the server that the user is in
+  members  Member[] //this is for the member of the server that the user is in
+  channels Channel[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Server {
+  id         String @id @default(uuid())
+  name       String
+  imageUrl   String @db.Text //@db.Text is for long text for url in mysql
+  inviteCode String @db.Text //@db.Text is for long text for url in mysql
+
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade) //ON DELETE CASCADE constraint is used in MySQL to delete the rows from the child table automatically, when the rows from the parent table are deleted 
+
+  members  Member[] //this is for the member of the server that the user is in
+  channels Channel[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([profileId]) //this is for indexing the profileId for faster query
+}
+
+enum MemberRole {
+  ADMIN
+  MODERATOR
+  GUEST
+}
+
+model Member {
+  id   String     @id @default(uuid())
+  role MemberRole @default(GUEST) //default role is guest for all members
+
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade) //ON DELETE CASCADE constraint is used in MySQL to delete the rows from the child table automatically, when the rows from the parent table are deleted 
+
+  serverId String //this for member relation with model Server
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade) //ON DELETE CASCADE constraint is used in MySQL to delete the rows from the child table automatically, when the rows from the parent table are deleted
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([profileId]) //this is for indexing the profileId for faster query
+  @@index([serverId]) //this is for indexing the serverId for faster query
+}
+
+enum ChannelType {
+  TEXT
+  AUDIO
+  VIDEO
+}
+
+model Channel {
+  id   String      @id @default(uuid())
+  name String
+  type ChannelType @default(TEXT) //default channel type is text
+
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade) //ON DELETE CASCADE constraint is used in MySQL to delete the rows from the child table automatically, when the rows from the parent table are deleted
+
+  serverId String //this for channel relation with model Server
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade) //ON DELETE CASCADE constraint is used in MySQL to delete the rows from the child table automatically, when the rows from the parent table are deleted
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([profileId]) //this is for indexing the profileId for faster query
+  @@index([serverId]) //this is for indexing the serverId for faster query
+}
